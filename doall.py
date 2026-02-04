@@ -6,27 +6,19 @@ parser = argparse.ArgumentParser()
 parser.add_argument("origvis",type=str)
 args = parser.parse_args()
 origvis = args.origvis
-for f in glob.glob('2GHz*.ms*'):
+for f in glob.glob('0.75GHz*.ms*'):
     shutil.rmtree(f)
-for f in glob.glob('5GHz*.ms*'):
-    shutil.rmtree(f)
-for f in glob.glob('9GHz*.ms*'):
-    shutil.rmtree(f)
-for f in glob.glob('19GHz*.ms*'):
-    shutil.rmtree(f)
-for f in glob.glob('34GHz*.ms*'):
+for f in glob.glob('1.3GHz*.ms*'):
     shutil.rmtree(f)
 
 # flagdata(vis=origvis, mode='manual',field='focus')
 
 # split(origvis, spw='0~1', outputvis = '19GHz.ms',datacolumn='ALL')
 
-split(origvis, spw='2', outputvis = '5GHz.ms',datacolumn='ALL')
-vis = '5GHz.ms'
+split(origvis, spw='0~1', outputvis = '0.75GHz.ms',datacolumn='ALL')
 
 
-split(origvis, spw='3', outputvis = '9GHz.ms',datacolumn='ALL')
-vis = '9GHz.ms'
+split(origvis, spw='2', outputvis = '1.3GHz.ms',datacolumn='ALL')
 
 
 # split(origvis, spw='4', outputvis = '2GHz.ms',datacolumn='ALL')
@@ -51,19 +43,19 @@ for f in glob.glob(f'*pol*D*'):
     shutil.rmtree(f)
 for f in glob.glob(f'*flux*fluxscale*'):
     shutil.rmtree(f)
-for visname in ['5GHz.ms','9GHz.ms']:
+for visname in ['0.75GHz.ms','1.3GHz.ms']:
     spw = visname[:-3]
     msmd.open(origvis)
     nchan = len(msmd.chanfreqs(0))
     referenceant = msmd.antennanames()[0]
     # Change field names
-    target = "GRB240205B"
-    gfield = "2333-528"
-    fluxfield = "1934-638"
+    target = "GRB220101A"
+    gfield = "J0029+3456"
+    fluxfield = "3C48"
     if spw=='19GHz':
         bfield='1921-293'
     else:
-        bfield = "1934-638"
+        bfield = "3C48"
     if bfield!=fluxfield:
         calfields = [bfield,gfield,fluxfield]
         allfields= [bfield,gfield,target,fluxfield]
@@ -82,7 +74,7 @@ for visname in ['5GHz.ms','9GHz.ms']:
     if fluxfield in ['J0408-6545','0408-6545']:
         setjy(vis=visname,field=fluxfield,scalebychan=True, standard="manual",fluxdensity=[17.066,0.0,0.0,0.0],spix=[-1.179],reffreq="1284MHz")
     else:
-        setjy(vis=visname,field=fluxfield,scalebychan=True,standard="Stevens-Reynolds 2016")
+        setjy(vis=visname,field=fluxfield,scalebychan=True)
     # flagdata(vis=visname, mode='manual',scan='0,44')
     # RFI issues in this one
     flagdata(vis=visname, mode='shadow')
@@ -143,35 +135,25 @@ for visname in ['5GHz.ms','9GHz.ms']:
             combine = '', bandtype = 'B', fillgaps = 4,
             gaintable = [kfile], gainfield = bfield,
             parang = False, append = append)
-    gaincal(vis=visname, caltable = kxfile, field=gfield, refant=referenceant,
-            gaintype='KCROSS', smodel=[1.,0.,1.,0.], solint='inf', combine='scan',
-            minblperant=minbaselines, minsnr=0, gaintable=[kfile,bfile],gainfield=[bfield,bfield])
     gaincal(vis=visname, caltable = gfile,
             field = fluxfield, refant = referenceant,
             minblperant = minbaselines, solnorm = False,  gaintype = 'G',
             solint = 60, combine = '', calmode='ap',
-            gaintable=[kfile,bfile,kxfile],gainfield=[bfield,bfield,gfield],
+            gaintable=[kfile,bfile],gainfield=[bfield,bfield],
             parang = False, append = False)
     if fluxfield!=bfield:
         gaincal(vis=visname, caltable = gfile,
                 field = bfield, refant = referenceant,
                 minblperant = minbaselines, solnorm = False,  gaintype = 'G',
                 solint = 60, combine = '', calmode='ap',
-                gaintable=[kfile,bfile,kxfile],gainfield=[bfield,bfield,gfield],
+                gaintable=[kfile,bfile],gainfield=[bfield,bfield],
                 parang = False, append = True)
     gaincal(vis=visname, caltable = gfile,
             field = gfield, refant = referenceant,
             minblperant = minbaselines, solnorm = False,  gaintype = 'G',
             solint = 60, combine = '', calmode='ap',
-            gaintable=[kfile,bfile,kxfile],gainfield=[bfield,bfield,gfield],
+            gaintable=[kfile,bfile],gainfield=[bfield,bfield],
             parang = False, append = True)
-    from casarecipes.atcapolhelpers import qufromgain
-    qu = qufromgain(gfile)
-    print(qu)
-    smodel = [1,qu[bfieldno][0],qu[bfieldno][1],0]
-    polcal(vis=visname,caltable=polfile,field=bfield,refant=referenceant,gaintable=[bfile,kxfile,gfile],poltype='D',solint='inf')
-    plotms(vis=gfile,xaxis='time',yaxis='amp',coloraxis='corr',iteraxis='antenna',gridrows=3,gridcols=2,showgui=False,
-            plotfile=f'relpolgaintable{spw}.jpg')
     kfile2 = f'{kfilebase}1'
     kxfile2 = f'{kfilebase}x1'
     bfile2 = f'{bfilebase}1'
@@ -182,7 +164,7 @@ for visname in ['5GHz.ms','9GHz.ms']:
     gaincal(vis=visname, caltable = pregfile2, field = bfield, refant = referenceant,
                 minblperant = minbaselines, solnorm = False,  gaintype = 'G',
                 solint = 60, combine = '', calmode='p',
-                parang = False,append = append, gaintable=[bfile,kxfile,gfile,polfile])
+                parang = False,append = append, gaintable=[bfile,gfile])
     plotms(vis=pregfile2, xaxis='time', yaxis='phase', coloraxis='corr', 
                 field=bfield, iteraxis='antenna',plotrange=[-1,-1,-180,180],
                 showgui= False, gridrows=3, gridcols=2, plotfile='initialgain2.jpg')
@@ -190,7 +172,7 @@ for visname in ['5GHz.ms','9GHz.ms']:
             field = bfield, refant = referenceant,
             minblperant = minbaselines, solnorm = False,  solint = 60,
             combine = '', bandtype = 'B', fillgaps = 4,
-            gaintable = [gfile,polfile], gainfield = [bfield,bfield],
+            gaintable = [gfile], gainfield = [bfield],
             parang = False, append = append)
     gaincal(vis=visname, caltable = gfile2,
             field = fluxfield, refant = referenceant,
@@ -209,30 +191,29 @@ for visname in ['5GHz.ms','9GHz.ms']:
             field = gfield, refant = referenceant,
             minblperant = minbaselines, solnorm = False,  gaintype = 'G',
             solint = 60, combine = '', calmode='ap',
-            gaintable=bfile2,smodel=smodel,
+            gaintable=bfile2,
             parang = False, append = True)
-    polcal(vis=visname,caltable=polfile2,field=bfield,refant=referenceant,gaintable=[bfile2,gfile2],poltype='D',solint='inf')
     if fluxfield!=bfield:
         myscale = fluxscale(vis=visname,caltable=gfile2,fluxtable=fluxfile2, reference=fluxfield,transfer=[gfield,bfield],incremental=False, fitorder=1)
     else:
         myscale = fluxscale(vis=visname,caltable=gfile2,fluxtable=fluxfile2, reference=fluxfield,transfer=[gfield],incremental=False, fitorder=1)
     applycal(vis=visname, field=fluxfield,
-            selectdata=False, calwt=False, gaintable=[fluxfile2,bfile2,polfile2],
-            gainfield=[fluxfield,'',''],
-            parang=True, interp=['linear','',''])
+            selectdata=False, calwt=False, gaintable=[fluxfile2,bfile2],
+            gainfield=[fluxfield,''],
+            parang=True, interp=['linear',''])
     applycal(vis=visname, field=gfield,
-            selectdata=False, calwt=False, gaintable=[fluxfile2,bfile2,polfile2],
-            gainfield=[gfield,'',''],
-            parang=True, interp=['linear','',''])
+            selectdata=False, calwt=False, gaintable=[fluxfile2,bfile2],
+            gainfield=[gfield,''],
+            parang=True, interp=['linear',''])
     if fluxfield!=bfield:
         applycal(vis=visname, field=bfield,
-                selectdata=False, calwt=False, gaintable=[fluxfile2,bfile2,polfile2],
-                gainfield=[gfield,'',''],
-                parang=True, interp=['linear','',''])
+                selectdata=False, calwt=False, gaintable=[fluxfile2,bfile2],
+                gainfield=[gfield,''],
+                parang=True, interp=['linear',''])
     
     applycal(vis=visname, field=target,
-            selectdata=False, calwt=False, gaintable=[fluxfile2,bfile2,polfile2],
-            gainfield=[gfield,'',''],
+            selectdata=False, calwt=False, gaintable=[fluxfile2,bfile2],
+            gainfield=[gfield,''],
             parang=True, interp=['linear',''])
     
     
@@ -295,11 +276,11 @@ for visname in ['5GHz.ms','9GHz.ms']:
                 writeflags=True, ntime='scan')
 # Change resolution, this is for an extended config, if in more compact config, try doing 10x bigger resolution
 
-cell=["2arcsec","2arcsec"]
+cell=["0.2arcsec","0.2arcsec"]
 imsize=5120
 spw=["",""]
-freqs = ["5.5GHz","9.0GHz"]
-vis=["5GHz.ms","9GHz.ms"]
+freqs = ["0.75Hz","1.3GHz"]
+vis=["0.75GHz.ms","1.3GHz.ms"]
 for c,s,f,v in zip(cell,spw,freqs,vis):
     tclean( vis=v,field=target,spw=s,datacolumn='corrected',imagename=f'targetspw{f}',imsize=imsize,cell=c,gridder='standard',pblimit=-1e-12,deconvolver='hogbom',weighting='briggs',robust=0,niter=8000,gain=0.1,pbcor=True)
 
